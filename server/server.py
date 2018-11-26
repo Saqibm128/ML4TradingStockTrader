@@ -18,8 +18,12 @@ def health():
 @app.route('/getStockActions')
 def stockAction():
     stockName = request.json['stock']
-    startTime = request.json['start_time']
-    endTime = request.json['end_time']
+    learnStartTime = request.json['learn_start_time'] #epoch times
+    learnEndTime = request.json['learn_end_time']
+
+    applyStartTime = request.json['apply_start_time']
+    applyEndTime = request.json['apply_start_time']
+
 
     return "Hello {}!".format(name)
 
