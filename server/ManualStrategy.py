@@ -107,17 +107,17 @@ class ManualStrategy(object):
         #         state = 0
         # trades.values[-1,:] = 0 - state #exit on the last day
 
-        if self.verbose: print type(trades) # it better be a DataFrame!
-        if self.verbose: print trades
-        if self.verbose: print prices_all
-        if self.verbose: print trades.sum().sum()
+        if self.verbose: print(type(trades)) # it better be a DataFrame!
+        if self.verbose: print(trades)
+        if self.verbose: print(prices_all)
+        if self.verbose: print(trades.sum().sum())
         return trades
 
 if __name__=="__main__":
-    print "One does not simply think up a strategy"
+    print("One does not simply think up a strategy")
 
     sl = StrategyLearner()
     sv = 100000
     sl.addEvidence(symbol="ML4T-220",sd=dt.datetime(2008,1,1),ed=dt.datetime(2009,12,31),sv=100000)
     trades = sl.testPolicy(symbol="ML4T-220",sd=dt.datetime(2010,1,1),ed=dt.datetime(2011,12,31),sv=100000)
-    print marketsimcode.compute_portvals(trades, commission=0, impact=0, start_val=sv).iloc[-1]
+    print(marketsimcode.compute_portvals(trades, commission=0, impact=0, start_val=sv).iloc[-1])

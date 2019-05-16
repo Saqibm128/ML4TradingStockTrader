@@ -228,14 +228,14 @@ def test_strategy(description, insample_args, outsample_args, benchmark_type, be
                          "    test_time: {}\n" \
                          "    max_time: {}\n" \
                          "    seed: {}\n".format(insample_args, outsample_args, benchmark_type, benchmark, train_time, test_time, max_time,seed)
-            raise IncorrectOutput, "Test failed on one or more output criteria.\n  Inputs:\n{}\n  Failures:\n{}".format(inputs_str, "\n".join(msgs))
+            raise IncorrectOutput("Test failed on one or more output criteria.\n  Inputs:\n{}\n  Failures:\n{}".format(inputs_str, "\n".join(msgs)))
     except Exception as e:
         # Test result: failed
         msg = "Test case description: {}\n".format(description)
         
         # Generate a filtered stacktrace, only showing erroneous lines in student file(s)
         tb_list = tb.extract_tb(sys.exc_info()[2])
-        for i in xrange(len(tb_list)):
+        for i in range(len(tb_list)):
             row = tb_list[i]
             tb_list[i] = (os.path.basename(row[0]), row[1], row[2], row[3])  # show only filename instead of long absolute path
         # tb_list = [row for row in tb_list if row[0] in ['QLearner.py','StrategyLearner.py']]

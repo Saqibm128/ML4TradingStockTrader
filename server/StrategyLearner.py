@@ -47,13 +47,13 @@ class StrategyLearner(object):
         prices_all = ut.get_data(syms, dates)  # automatically adds SPY
         prices = prices_all[syms]  # only portfolio symbols
         prices_SPY = prices_all['SPY']  # only SPY, for comparison later
-        if self.verbose: print prices
+        if self.verbose: print(prices)
 
         # example use with new colname
         volume_all = ut.get_data(syms, dates, colname = "Volume")  # automatically adds SPY
         volume = volume_all[symbol]  # only portfolio symbols
         volume_SPY = volume_all['SPY']  # only SPY, for comparison later
-        if self.verbose: print volume
+        if self.verbose: print(volume)
 
         # generate some technical statistics on stock data
 
@@ -148,17 +148,17 @@ class StrategyLearner(object):
         #         state = 0
         # trades.values[-1,:] = 0 - state #exit on the last day
 
-        if self.verbose: print type(trades) # it better be a DataFrame!
-        if self.verbose: print trades
-        if self.verbose: print prices_all
-        if self.verbose: print trades.sum().sum()
+        if self.verbose: print(type(trades)) # it better be a DataFrame!
+        if self.verbose: print(trades)
+        if self.verbose: print(prices_all)
+        if self.verbose: print(trades.sum().sum())
         return trades
 
 if __name__=="__main__":
-    print "One does not simply think up a strategy"
+    print("One does not simply think up a strategy")
 
     sl = StrategyLearner()
     sv = 100000
     sl.addEvidence(symbol="ML4T-220",sd=dt.datetime(2008,1,1),ed=dt.datetime(2009,12,31),sv=100000)
     trades = sl.testPolicy(symbol="ML4T-220",sd=dt.datetime(2010,1,1),ed=dt.datetime(2011,12,31),sv=100000)
-    print marketsimcode.compute_portvals(trades, commission=0, impact=0, start_val=sv).iloc[-1]
+    print(marketsimcode.compute_portvals(trades, commission=0, impact=0, start_val=sv).iloc[-1])

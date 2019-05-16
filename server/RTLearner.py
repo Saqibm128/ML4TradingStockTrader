@@ -14,16 +14,16 @@ class RTLearner:
     def addNode(self, node):
 
         if self.verbose and node[0] == True:
-            print "Adding leaf: " + str(self.nextEmpty) + str(node)
+            print("Adding leaf: " + str(self.nextEmpty) + str(node))
         elif (self.verbose):
-            print "Adding node " + str(self.nextEmpty) + str(node)
+            print("Adding node " + str(self.nextEmpty) + str(node))
         self.tree = np.append(self.tree, node);
         self.nextEmpty += 1
         self.tree = self.tree.reshape([self.nextEmpty, 5])
 
     def addEvidence(self, Xtrain, Ytrain):
         if self.verbose:
-            print "adding evidence"
+            print("adding evidence")
         if Xtrain.shape[0] <= self.leaf_size:
             self.addNode([True, np.nan, np.median(Ytrain), np.nan, np.nan])
             return;
