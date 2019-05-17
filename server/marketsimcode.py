@@ -2,7 +2,7 @@
 
 Copyright 2017, Georgia Tech Research Corporation
 Atlanta, Georgia 30332-0415
-All Rights Reserved
+All Rights ResenetChangesed
 """
 
 import pandas as pd
@@ -14,46 +14,34 @@ from util import get_data
 def author():
     return "msaqib3"
 
-def compute_portvals(orders, start_val = 1000000, commission=9.95, impact=0.005):
+def compute_portvals(orders, start_val = 1000000, commission=0.01, impact=0.005):
     # this is the function the autograder will call to test your code
     # NOTE: orders_file may be a string, or it may be a file object. Your
     # code should work correctly with either input
     # TODO: Your code here
         # In the template, instead of computing the value of the portfolio, we just
         # read in the value of IBM over 6 months
-    orders["Symbol"] = orders.columns[0]
 
-    symbols = orders["Symbol"].unique()
+    symbols = orders.columns
     symbolData = get_data(symbols, pd.date_range(orders.index[0], orders.index[-1]), addSPY=False)
     # print(pd.isnull(symbolData).any())
     symbolData = symbolData.fillna(method="ffill").fillna(method="bfill")
-    rv = pd.DataFrame(index=symbolData.index, columns=["Current Value"])
-    # rv[:] = start_val
     portfolio = pd.Series([0 for symbol in symbols], index=symbols)
-    # print symbolData.shape
-    # print orders.shape
-    for i in range(len(orders.index)):
-            # multiplier = 1
-            # if order["Order"] == "SELL":
-            #     multiplier = -1
-            date = orders.index[i]
-            portfolio[symbols[0]] += orders[symbols[0]][date]
-            # print(start_val)
-            if (orders[symbols[0]][date] > 0):
-                #buying increases price of stock
-                start_val = start_val - (1.0 + commission + impact) * orders[symbols[0]][date] *  symbolData[orders["Symbol"][date]][date]
-            else:
-                #selling/shorting decreases price of stock
-                start_val = start_val - (1.0 - commission - impact) * orders[symbols[0]][date] *  symbolData[orders["Symbol"][date]][date]
+    netChanges = orders * symbolData
 
-            # start_val = start_val - commission
-            # start_val = start_val - impact * orders[symbols[0]][date] *  symbolData[orders["Symbol"][date]][date]
-            # if date == orders.index[0]:
-            rv.loc[date] = start_val + (portfolio * symbolData.loc[date]).sum()
-            # else:
-            #     rv.loc[date] = rv.loc[date - pd.Timedelta("1 days")] + (portfolio * symbolData.loc[date]).sum()
-    rv = rv.fillna(method="ffill").fillna(method="bfill")
-    return rv
+    #         if (orders[symbols[0]][date] > 0):
+    #             #buying increases price of stock
+    #             start_val = start_val - (1.0 + commission + impact) * orders[symbols[0]][date] *  symbolData[orders["Symbol"][date]][date]
+    #         else:
+    #             #selling/shorting decreases price of stock
+    #             start_val = start_val - (1.0 - commission - impact) * orders[symbols[0]][date] *  symbolData[orders["Symbol"][date]][date]
+
+    netChanges = netChanges.fillna(0)
+    portVal = netChanges.sum(axis=1)
+    portVal.iloc[0] += start_val
+    portVal = portVal.cumsum()
+    return netChanges, portVal
+
 
 def test_code():
     # this is a helper function you can use to test your code
@@ -61,10 +49,15 @@ def test_code():
     # Define input parameters
 
     of = "./orders/orders-01.csv"
+
+    of = pd.read_csv(of, index_col=0).dropna()
+    of.index = pd.to_datetime(of.index)
+    of.loc[of["Order"] == "SELL", "Shares"] = - of[of["Order"] == "SELL"]["Shares"]
+
     sv = 1000000
 
     # Process orders
-    portvals = compute_portvals(orders_file = of, start_val = sv)
+    portvals = compute_portvals(orders = of, start_val = sv)
     if isinstance(portvals, pd.DataFrame):
         portvals = portvals[portvals.columns[0]] # just get the first column
     else:

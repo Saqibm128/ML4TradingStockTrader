@@ -10,8 +10,8 @@ import random
 import math
 import marketsimcode
 from math import floor
-from RTLearner import RTLearner
-# from DTLearner import DTLearner
+from sklearn import ensemble
+import matplotlib.pyplot as plt
 
 class StrategyLearner(object):
     def author(self):
@@ -29,7 +29,7 @@ class StrategyLearner(object):
         self.impact = impact
         self.ybuy = ybuy
         # self.learner = RTLearner, kwargs={'leaf_size': 5}, bags=3)
-        self.learner = RTLearner(leaf_size = 5)
+        self.learner = ensemble.RandomForestClassifier(1)
         self.rfThresh = rfThresh
 
 
@@ -64,7 +64,7 @@ class StrategyLearner(object):
 
 
 
-        self.learner.addEvidence(X, Y)
+        self.learner.fit(X, Y)
 
     def genStats(self, price, volume):
         '''
@@ -99,7 +99,9 @@ class StrategyLearner(object):
         movingStd = price.rolling(5).std().fillna(method="bfill").fillna(method="ffill")
         moving_z_score = (price - movingAverage) / movingStd
         movingVolStd = volume.rolling(5).std().fillna(method='bfill').fillna(method='ffill')
-        X = pd.DataFrame([moving_z_score, movingStd, momentum, changeVol, movingVolStd]).values
+        X = pd.DataFrame([moving_z_score, movingStd, momentum, changeVol, movingVolStd])
+        X = X.replace([np.inf, -np.inf], np.nan)
+        X = X.fillna(method='ffill').fillna(method='bfill').values
         return X.T, Y
 
     # this method should use the existing policy and test it against new data
@@ -116,7 +118,7 @@ class StrategyLearner(object):
         prices_all = ut.get_data([symbol], dates)  # automatically adds SPY
         volumes_all = ut.get_data([symbol], dates, colname = "Volume")
         X, _ = self.genStats(prices_all[symbol], volumes_all[symbol])
-        Ypred = self.learner.query(X)
+        Ypred = self.learner.predict(X)
         Ypred = pd.Series(Ypred, index=prices_all.index)
 
         # print(X.shape, Ypred)
@@ -126,39 +128,25 @@ class StrategyLearner(object):
 
         trades_SPY = prices_all['SPY']  # only SPY, for comparison later
         trades.values[:,:] = 0 # set them all to nothing
-        trades.loc[trades.index[1:], symbol] = Ypred[1:].apply(lambda x: 1000 if x > self.rfThresh else -1000 if x < - self.rfThresh else 0) #position
+        trades.loc[trades.index[1:], symbol] = Ypred[1:].apply(lambda x: 10 if x > self.rfThresh else -10 if x < - self.rfThresh else 0) #position
         trades.loc[trades.index[-1], symbol] = 0
         trades[symbol] = - (trades.shift(1) - trades) # subtract positions now by positions before to get change to portfolio (trades)
         trades.loc[trades.index[0], symbol] = 0
-        # state = 0
-        # for date in trades.index[:-1]:
-        #     #go long
-        #     if Ypred[date] > self.rfThresh and (state != 1000 or state != floor(sv / prices[date])): #go all in!
-        #         toGoTo = 1000 #if 1000 < (sv / prices[date]) else floor(sv / prices[date])
-        #         trades.loc[date, symbol] = toGoTo - state
-        #         state = toGoTo
-        #     #go short
-        #     elif Ypred[date] < -self.rfThresh and (state != -1000 or state != 0 - floor(sv / prices[date])):
-        #         toGoTo = - 1000 #if 1000 < (sv / prices[date]) else - floor(sv / prices[date])
-        #         trades.loc[date, symbol] = toGoTo - state
-        #         state = toGoTo
-        #     #exit stock for now
-        #     else:
-        #         trades.loc[date, symbol] = - state
-        #         state = 0
-        # trades.values[-1,:] = 0 - state #exit on the last day
 
-        if self.verbose: print(type(trades)) # it better be a DataFrame!
+
+        if self.verbose: print((type(trades))) # it better be a DataFrame!
         if self.verbose: print(trades)
         if self.verbose: print(prices_all)
-        if self.verbose: print(trades.sum().sum())
+        if self.verbose: print((trades.sum().sum()))
         return trades
 
 if __name__=="__main__":
     print("One does not simply think up a strategy")
 
     sl = StrategyLearner()
-    sv = 100000
-    sl.addEvidence(symbol="ML4T-220",sd=dt.datetime(2008,1,1),ed=dt.datetime(2009,12,31),sv=100000)
-    trades = sl.testPolicy(symbol="ML4T-220",sd=dt.datetime(2010,1,1),ed=dt.datetime(2011,12,31),sv=100000)
-    print(marketsimcode.compute_portvals(trades, commission=0, impact=0, start_val=sv).iloc[-1])
+    sv = 1000
+    sl.addEvidence(symbol="GOOG",sd=dt.datetime(2008,1,1),ed=dt.datetime(2009,12,31),sv=100000)
+    trades = sl.testPolicy(symbol="GOOG",sd=dt.datetime(2010,1,1),ed=dt.datetime(2011,12,31),sv=100000)
+    results = (marketsimcode.compute_portvals(trades, commission=0, impact=0, start_val=sv)[1])
+    plt.plot(results.index, results)
+    plt.show()
