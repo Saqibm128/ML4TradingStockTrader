@@ -28,15 +28,14 @@ class StrategyLearner(object):
         self.verbose = verbose
         self.impact = impact
         self.ybuy = ybuy
-        # self.learner = RTLearner, kwargs={'leaf_size': 5}, bags=3)
-        self.learner = ensemble.RandomForestClassifier(1)
+        self.learner = ensemble.RandomForestRegressor(50)
         self.rfThresh = rfThresh
 
 
     # this method should create a RTLearner, and train it for trading
-    def addEvidence(self, symbol = "IBM", \
-        sd=dt.datetime(2008,1,1), \
-        ed=dt.datetime(2009,1,1), \
+    def addEvidence(self, symbol = "IBM",
+        sd=dt.datetime(2008,1,1),
+        ed=dt.datetime(2009,1,1),
         sv = 10000):
 
         # add your code to do learning here
@@ -78,28 +77,18 @@ class StrategyLearner(object):
 
         # print  "dr", dr.mean()
         dr = dr.fillna(method='ffill').fillna(method="bfill")
-        if self.impact != 0:
-            threeDayRet = (price.shift(-5)) / price - 1
-            threeDayRet = threeDayRet.fillna(method="ffill").fillna(method="bfill")
-            Y = threeDayRet.apply(lambda x: 1 if x > (self.ybuy + 6 * self.impact) else -1 if x < (-self.ybuy - 6 * self.impact) else np.nan) #predict future dr from past!
-            Y = Y.fillna(method="ffill", limit=3)
-            Y = Y.fillna(0)
-            # Y = Y.rolling(2)
-            if pd.isnull(Y.iloc[0]):
-                Y.iloc[0] = 0
-            Y = Y.fillna(method="ffill").fillna(method="bfill")
-        else:
-            Y = dr.apply(lambda x: 1 if x > (self.ybuy + self.impact) else -1 if x < (-self.ybuy - self.impact) else 0) #predict future dr from past!
+        Y = dr * 100 # percentageReturn
         # Y = (dr - dr.min()) / (dr.max() - dr.min()) * 2 - 1
         # Y = dr.rolling(2).apply(lambda x: if (1-self.impact) * (x.iloc[1] - x.iloc[0])
-        momentum = (dr.shift(1) - dr) / dr
+        drChange = dr.shift(2) - dr.shift(1)
+        momentum = (dr.shift(2) - dr.shift(1)) / dr.shift(1)
         momentum = momentum.fillna(method="ffill").fillna(method="bfill")
 
-        movingAverage = price.rolling(5).mean().fillna(method ="bfill").fillna(method="ffill")
-        movingStd = price.rolling(5).std().fillna(method="bfill").fillna(method="ffill")
+        movingAverage = price.rolling(5).mean().fillna(method="ffill").fillna(method ="bfill")
+        movingStd = price.rolling(5).std().fillna(method="ffill").fillna(method="bfill")
         moving_z_score = (price - movingAverage) / movingStd
-        movingVolStd = volume.rolling(5).std().fillna(method='bfill').fillna(method='ffill')
-        X = pd.DataFrame([moving_z_score, movingStd, momentum, changeVol, movingVolStd])
+        movingVolStd = volume.rolling(5).std().fillna(method='ffill').fillna(method='bfill')
+        X = pd.DataFrame([moving_z_score, movingStd, momentum, changeVol, movingVolStd, drChange])
         X = X.replace([np.inf, -np.inf], np.nan)
         X = X.fillna(method='ffill').fillna(method='bfill').values
         return X.T, Y
@@ -110,10 +99,6 @@ class StrategyLearner(object):
         ed=dt.datetime(2010,1,1), \
         sv = 10000):
 
-        # print(self.impact)
-
-        # here we build a fake set of trades
-        # your code should return the same sort of data
         dates = pd.date_range(sd, ed)
         prices_all = ut.get_data([symbol], dates)  # automatically adds SPY
         volumes_all = ut.get_data([symbol], dates, colname = "Volume")
@@ -121,32 +106,25 @@ class StrategyLearner(object):
         Ypred = self.learner.predict(X)
         Ypred = pd.Series(Ypred, index=prices_all.index)
 
-        # print(X.shape, Ypred)
-        trades = prices_all[[symbol,]]  # only portfolio symbols
-        # print("trades shape", trades.shape)
-        prices = prices_all[symbol]
+        trades = pd.DataFrame(index=dates, columns=[symbol])
 
-        trades_SPY = prices_all['SPY']  # only SPY, for comparison later
-        trades.values[:,:] = 0 # set them all to nothing
-        trades.loc[trades.index[1:], symbol] = Ypred[1:].apply(lambda x: 10 if x > self.rfThresh else -10 if x < - self.rfThresh else 0) #position
-        trades.loc[trades.index[-1], symbol] = 0
+        trades.loc[trades.index[1:], symbol] = Ypred[1:].apply(lambda x: 1 if x > self.rfThresh else 0 if x < - self.rfThresh else np.nan) #position
+        trades.loc[trades.index[-1], symbol] = 0 #we start at 0 shares
+        trades.loc[trades.index[0], symbol] = 0 #we end at 0 shares
+        trades = trades.fillna(method="ffill").fillna(method="bfill")
         trades[symbol] = - (trades.shift(1) - trades) # subtract positions now by positions before to get change to portfolio (trades)
-        trades.loc[trades.index[0], symbol] = 0
 
-
-        if self.verbose: print((type(trades))) # it better be a DataFrame!
-        if self.verbose: print(trades)
-        if self.verbose: print(prices_all)
-        if self.verbose: print((trades.sum().sum()))
+        trades = trades * 1
         return trades
 
 if __name__=="__main__":
     print("One does not simply think up a strategy")
 
     sl = StrategyLearner()
-    sv = 1000
-    sl.addEvidence(symbol="GOOG",sd=dt.datetime(2008,1,1),ed=dt.datetime(2009,12,31),sv=100000)
-    trades = sl.testPolicy(symbol="GOOG",sd=dt.datetime(2010,1,1),ed=dt.datetime(2011,12,31),sv=100000)
+    sv = 300
+    symbol="GOOG"
+    sl.addEvidence(symbol=symbol,sd=dt.datetime(2007,1,1),ed=dt.datetime(2008,12,31),sv=sv)
+    trades = sl.testPolicy(symbol=symbol,sd=dt.datetime(2008,1,1),ed=dt.datetime(2009,4,20),sv=sv)
     results = (marketsimcode.compute_portvals(trades, commission=0, impact=0, start_val=sv)[1])
     plt.plot(results.index, results)
     plt.show()

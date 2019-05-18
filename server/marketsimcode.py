@@ -27,7 +27,8 @@ def compute_portvals(orders, start_val = 1000000, commission=0.01, impact=0.005)
     # print(pd.isnull(symbolData).any())
     symbolData = symbolData.fillna(method="ffill").fillna(method="bfill")
     portfolio = pd.Series([0 for symbol in symbols], index=symbols)
-    netChanges = orders * symbolData
+    netChanges = - orders * symbolData
+    netChanges = netChanges - (commission + impact) * netChanges
 
     #         if (orders[symbols[0]][date] > 0):
     #             #buying increases price of stock
@@ -39,7 +40,7 @@ def compute_portvals(orders, start_val = 1000000, commission=0.01, impact=0.005)
     netChanges = netChanges.fillna(0)
     portVal = netChanges.sum(axis=1)
     portVal.iloc[0] += start_val
-    portVal = portVal.cumsum()
+    portVal = portVal.cumsum() + (orders.cumsum() * symbolData).fillna(method="ffill").fillna(method="bfill").sum(axis=1)
     return netChanges, portVal
 
 
