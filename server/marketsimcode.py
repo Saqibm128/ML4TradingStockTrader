@@ -15,28 +15,12 @@ def author():
     return "msaqib3"
 
 def compute_portvals(orders, start_val = 1000000, commission=0.01, impact=0.005):
-    # this is the function the autograder will call to test your code
-    # NOTE: orders_file may be a string, or it may be a file object. Your
-    # code should work correctly with either input
-    # TODO: Your code here
-        # In the template, instead of computing the value of the portfolio, we just
-        # read in the value of IBM over 6 months
 
     symbols = orders.columns
     symbolData = get_data(symbols, pd.date_range(orders.index[0], orders.index[-1]), addSPY=False)
-    # print(pd.isnull(symbolData).any())
     symbolData = symbolData.fillna(method="ffill").fillna(method="bfill")
-    portfolio = pd.Series([0 for symbol in symbols], index=symbols)
     netChanges = - orders * symbolData
-    netChanges = netChanges - (commission + impact) * netChanges
-
-    #         if (orders[symbols[0]][date] > 0):
-    #             #buying increases price of stock
-    #             start_val = start_val - (1.0 + commission + impact) * orders[symbols[0]][date] *  symbolData[orders["Symbol"][date]][date]
-    #         else:
-    #             #selling/shorting decreases price of stock
-    #             start_val = start_val - (1.0 - commission - impact) * orders[symbols[0]][date] *  symbolData[orders["Symbol"][date]][date]
-
+    netChanges = netChanges - (impact) * netChanges - commission
     netChanges = netChanges.fillna(0)
     portVal = netChanges.sum(axis=1)
     portVal.iloc[0] += start_val
